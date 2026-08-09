@@ -1,3 +1,6 @@
 .DS_Store
 .codex/
 *.tmp
+reports/
+.research-cron.lock
+research-cron.log
