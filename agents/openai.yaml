@@ -1,0 +1,4 @@
+interface:
+  display_name: "Find Open Source Fit"
+  short_description: "Research contribution-ready projects for Mike"
+  default_prompt: "Use $find-open-source-fit to find and rank open-source projects worth contributing to."
