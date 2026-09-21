@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "repository": "mikeajijola/find-open-source-fit",
+  "controlPlane": "mikeajijola/agent-control",
+  "controlRevision": "10c3a08773e94c64a5e0123e2a7a4f56cec9d5bf",
+  "workflow": ".github/workflows/repository-lifecycle.yml",
+  "evidence": "job-log-and-summary",
+  "authority": "contents:read"
+}

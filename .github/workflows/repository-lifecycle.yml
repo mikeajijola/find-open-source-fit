@@ -1,0 +1,49 @@
+name: Repository lifecycle
+
+on:
+  workflow_dispatch:
+    inputs:
+      task_digest:
+        description: Immutable Agent Control task digest
+        required: true
+        type: string
+      source_issue:
+        description: Exact authorizing issue URL
+        required: true
+        type: string
+      control_revision:
+        description: Immutable Agent Control policy revision
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  execute:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run repository verification
+        run: test -s SKILL.md && test -s agents/openai.yaml && test -x scripts/run-research-cron.sh
+      - name: Validate provenance and record evidence
+        env:
+          TASK_DIGEST: ${{ inputs.task_digest }}
+          SOURCE_ISSUE: ${{ inputs.source_issue }}
+          CONTROL_REVISION: ${{ inputs.control_revision }}
+          OBSERVED_SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const config = JSON.parse(fs.readFileSync('.github/agent-control.json', 'utf8'));
+          const required = (value, pattern, name) => { if (!pattern.test(value || '')) throw new Error(`Invalid ${name}`); };
+          required(process.env.TASK_DIGEST, /^[a-f0-9]{64}$/, 'task digest');
+          required(process.env.CONTROL_REVISION, /^[a-f0-9]{40}$/, 'control revision');
+          required(process.env.SOURCE_ISSUE, /^https:\/\/github\.com\/mikeajijola\/[A-Za-z0-9_.-]+\/issues\/[1-9][0-9]*$/, 'source issue');
+          if (process.env.CONTROL_REVISION !== config.controlRevision) throw new Error('Unrecognized control revision');
+          const evidence = {schemaVersion: 1, repository: process.env.GITHUB_REPOSITORY, visibility: 'public', observedSha: process.env.OBSERVED_SHA, taskDigest: process.env.TASK_DIGEST, sourceIssue: process.env.SOURCE_ISSUE, controlRevision: process.env.CONTROL_REVISION, authority: 'contents:read', verification: 'passed', runUrl: process.env.RUN_URL};
+          console.log(`AGENT_CONTROL_EVIDENCE=${JSON.stringify(evidence)}`);
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `## Repository lifecycle passed\n\n- Repository: \`${evidence.repository}\` (public)\n- Tested revision: \`${evidence.observedSha}\`\n- Control revision: \`${evidence.controlRevision}\`\n- Authority: \`${evidence.authority}\`\n- [Authorizing issue](${evidence.sourceIssue})\n`);
+          NODE
